@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RAG Eval Dashboard</title>
+<meta name="description" content="Experiment tracking for a retrieval-augmented support bot: accuracy, retrieval recall, cost and latency per configuration.">
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7;
+  --surface: #fcfcfb;
+  --text-primary: #0b0b0b;
+  --text-secondary: #52514e;
+  --text-muted: #898781;
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+  --border: rgba(11, 11, 11, 0.10);
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --good: #0ca30c;
+  --critical: #d03b3b;
+  --hover: rgba(11, 11, 11, 0.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --text-primary: #f0efec;
+    --text-secondary: #c3c2b7;
+    --text-muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --hover: rgba(255, 255, 255, 0.05);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d;
+  --surface: #1a1a19;
+  --text-primary: #f0efec;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --grid: #2c2c2a;
+  --axis: #383835;
+  --border: rgba(255, 255, 255, 0.10);
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --hover: rgba(255, 255, 255, 0.05);
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text-primary);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+main { max-width: 1120px; margin: 0 auto; padding: 32px 16px 64px; }
+header { display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between; margin-bottom: 24px; }
+h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 16px; margin: 0 0 2px; }
+.sub { color: var(--text-secondary); margin: 0; }
+.hint { color: var(--text-muted); font-size: 13px; margin: 0 0 12px; }
+a { color: var(--series-1); }
+select, button {
+  font: inherit; color: var(--text-primary); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px;
+}
+button { cursor: pointer; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.controls label { color: var(--text-secondary); font-size: 13px; }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 16px; min-width: 0; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 820px) { .grid-2 { grid-template-columns: 1fr; } }
+
+.tiles { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+@media (max-width: 820px) { .tiles { grid-template-columns: 1fr 1fr; } }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; }
+.tile .label { color: var(--text-secondary); font-size: 13px; }
+.tile .value { font-size: 30px; font-weight: 600; line-height: 1.2; margin-top: 4px; }
+.tile.hero .value { font-size: 48px; }
+.tile .delta { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary); margin: 8px 0 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+svg { display: block; width: 100%; height: auto; overflow: visible; }
+svg text { font: 12px system-ui, -apple-system, "Segoe UI", sans-serif; fill: var(--text-muted); }
+svg .label-strong { fill: var(--text-primary); }
+svg .label-secondary { fill: var(--text-secondary); }
+.mark { transition: opacity 0.12s; }
+.mark:hover, .mark:focus { opacity: 0.8; outline: none; }
+.hit { fill: transparent; cursor: pointer; }
+.hit:focus { outline: none; }
+.hit:focus + .dot, .hit:hover + .dot { stroke-width: 3; }
+
+.tooltip {
+  position: fixed; pointer-events: none; z-index: 10; display: none;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; box-shadow: 0 4px 16px rgba(0,0,0,0.12); max-width: 260px;
+}
+.tooltip .t-title { color: var(--text-secondary); margin-bottom: 4px; }
+.tooltip .t-row { display: flex; align-items: center; gap: 8px; }
+.tooltip .t-row b { font-weight: 600; }
+.tooltip .key { width: 12px; height: 2px; display: inline-block; }
+
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
+td.nowrap { white-space: nowrap; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--hover); }
+tr.selected td { background: var(--hover); font-weight: 600; }
+#questions tbody tr { cursor: default; }
+.status { white-space: nowrap; }
+.status svg { display: inline-block; width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
+code { font: 12px ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text-secondary); }
+.muted { color: var(--text-muted); }
+
+.empty { text-align: center; padding: 48px 20px; }
+.empty pre { display: inline-block; text-align: left; background: var(--page); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; font-size: 13px; overflow-x: auto; max-width: 100%; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <h1>RAG Eval Dashboard</h1>
+      <p class="sub">Every experiment on the Lumen Bikes support bot: what changed, and whether it helped.</p>
+    </div>
+    <div class="controls">
+      <label for="pick">Experiment</label>
+      <select id="pick"></select>
+      <button id="theme" type="button" aria-label="Toggle dark mode">◐</button>
+    </div>
+  </header>
+
+  <div id="empty" class="card empty" hidden>
+    <h2>No experiments yet</h2>
+    <p class="sub">Run the eval harness to record your first experiment:</p>
+    <pre>python lessons/06_evals/main.py --label baseline --top-k 3 --effort low</pre>
+    <p class="hint" id="empty-detail"></p>
+  </div>
+
+  <div id="content" hidden>
+    <section class="tiles" aria-label="Selected experiment summary">
+      <div class="tile hero"><div class="label">Overall accuracy</div><div class="value" id="t-acc"></div><div class="delta" id="d-acc"></div></div>
+      <div class="tile"><div class="label">Retrieval recall</div><div class="value" id="t-rec"></div><div class="delta" id="d-rec"></div></div>
+      <div class="tile"><div class="label">Cost per question</div><div class="value" id="t-cost"></div><div class="delta" id="d-cost"></div></div>
+      <div class="tile"><div class="label">Latency p50</div><div class="value" id="t-lat"></div><div class="delta" id="d-lat"></div></div>
+    </section>
+
+    <div class="grid-2">
+      <section class="card">
+        <h2>Quality by experiment</h2>
+        <p class="hint">Share of eval cases passed, 0–100%</p>
+        <div class="legend">
+          <span><i style="background:var(--series-1)"></i>Overall accuracy</span>
+          <span><i style="background:var(--series-2)"></i>Retrieval recall</span>
+          <span><i style="background:var(--series-3)"></i>Abstain accuracy</span>
+        </div>
+        <div id="bars"></div>
+      </section>
+      <section class="card">
+        <h2>Quality vs cost</h2>
+        <p class="hint">Up and to the left is better. Each dot is one experiment.</p>
+        <div id="scatter"></div>
+      </section>
+    </div>
+
+    <section class="card">
+      <h2>All experiments</h2>
+      <p class="hint">Click a row to inspect it.</p>
+      <div class="table-wrap"><table id="experiments"></table></div>
+    </section>
+
+    <section class="card">
+      <h2 id="q-title">Per-question results</h2>
+      <p class="hint">Error analysis: a failure with a retrieval miss is a search problem, not a prompt problem.</p>
+      <div class="table-wrap"><table id="questions"></table></div>
+    </section>
+  </div>
+  <p class="hint">Source: <code>docs/data/experiments.json</code>, written by <code>lessons/06_evals/main.py</code>.</p>
+</main>
+<div class="tooltip" id="tooltip" role="status"></div>
+
+<script>
+const SVG_NS = "http://www.w3.org/2000/svg";
+const pct = v => `${Math.round(v * 100)}%`;
+const usd = v => v === 0 ? "$0" : v < 0.01 ? `$${v.toFixed(4)}` : `$${v.toFixed(3)}`;
+const secs = v => `${v.toFixed(1)}s`;
+let experiments = [];
+let selected = 0;
+
+// --- tiny DOM helpers (textContent only: labels come from data) ------------
+function el(tag, attrs = {}, text) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function svgEl(tag, attrs = {}, text) {
+  const node = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) node.setAttribute(k, v);
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+
+// --- tooltip ----------------------------------------------------------------
+const tip = document.getElementById("tooltip");
+function showTip(evt, title, rows) {
+  tip.replaceChildren(el("div", { class: "t-title" }, title));
+  for (const [color, value, name] of rows) {
+    const row = el("div", { class: "t-row" });
+    if (color) row.append(el("span", { class: "key", style: `background:${color}` }));
+    row.append(el("b", {}, value), el("span", { class: "muted" }, name));
+    tip.append(row);
+  }
+  tip.style.display = "block";
+  const box = evt.target.getBoundingClientRect();
+  const x = evt.clientX ?? box.left + box.width / 2;
+  const y = evt.clientY ?? box.top;
+  const left = Math.min(x + 12, window.innerWidth - tip.offsetWidth - 8);
+  tip.style.left = `${Math.max(8, left)}px`;
+  tip.style.top = `${Math.max(8, y - tip.offsetHeight - 12)}px`;
+}
+const hideTip = () => { tip.style.display = "none"; };
+function bindTip(node, title, rows) {
+  node.setAttribute("tabindex", "0");
+  node.addEventListener("pointermove", e => showTip(e, title, rows));
+  node.addEventListener("focus", e => showTip(e, title, rows));
+  node.addEventListener("pointerleave", hideTip);
+  node.addEventListener("blur", hideTip);
+}
+
+// Horizontal bar with a 4px rounded data-end, square at the baseline.
+function barPath(x, y, w, h) {
+  const r = Math.min(4, w, h / 2);
+  if (w <= 0) return "";
+  return `M${x},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x} Z`;
+}
+
+// --- chart: grouped horizontal bars ----------------------------------------
+const SERIES = [
+  ["accuracy", "Overall accuracy", "var(--series-1)"],
+  ["retrieval_recall", "Retrieval recall", "var(--series-2)"],
+  ["abstain_accuracy", "Abstain accuracy", "var(--series-3)"],
+];
+function drawBars() {
+  const W = 480, labelW = 120, right = 40, barH = 8, gap = 2, groupPad = 16;
+  const groupH = SERIES.length * (barH + gap) - gap;
+  const top = 4, axisH = 22;
+  const H = top + experiments.length * (groupH + groupPad) + axisH;
+  const plotW = W - labelW - right;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Quality metrics by experiment" });
+
+  for (const t of [0, 0.25, 0.5, 0.75, 1]) {
+    const x = labelW + t * plotW;
+    svg.append(svgEl("line", { x1: x, x2: x, y1: top, y2: H - axisH, stroke: t === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
+    svg.append(svgEl("text", { x, y: H - 6, "text-anchor": "middle" }, pct(t)));
+  }
+  experiments.forEach((exp, i) => {
+    const y0 = top + i * (groupH + groupPad) + groupPad / 2;
+    const name = exp.label.length > 16 ? exp.label.slice(0, 15) + "…" : exp.label;
+    svg.append(svgEl("text", { x: labelW - 10, y: y0 + groupH / 2 + 4, "text-anchor": "end",
+      class: i === selected ? "label-strong" : "label-secondary", "font-weight": i === selected ? 600 : 400 }, name));
+    SERIES.forEach(([key, label, color], s) => {
+      const v = exp.metrics[key];
+      const y = y0 + s * (barH + gap);
+      const bar = svgEl("path", { d: barPath(labelW, y, v * plotW, barH), fill: color, class: "mark" });
+      svg.append(bar);
+      // Hit area: the full row band, bigger than the 8px bar.
+      const hit = svgEl("rect", { x: labelW, y: y - 1, width: plotW, height: barH + 2, class: "hit",
+        "aria-label": `${exp.label}, ${label}: ${pct(v)}` });
+      bindTip(hit, exp.label, SERIES.map(([k, l, c]) => [c, pct(exp.metrics[k]), l]));
+      svg.append(hit);
+    });
+    // Selective label: only the headline metric gets a value at its tip.
+    svg.append(svgEl("text", { x: labelW + exp.metrics.accuracy * plotW + 6, y: y0 + barH - 0.5,
+      class: "label-secondary" }, pct(exp.metrics.accuracy)));
+  });
+  document.getElementById("bars").replaceChildren(svg);
+}
+
+// --- chart: quality vs cost scatter ----------------------------------------
+function niceMax(v) {
+  const p = Math.pow(10, Math.floor(Math.log10(v)));
+  for (const m of [1, 2, 2.5, 5, 10]) if (m * p >= v) return m * p;
+  return 10 * p;
+}
+function drawScatter() {
+  const W = 480, H = 300, left = 44, right = 24, top = 12, bottom = 36;
+  const plotW = W - left - right, plotH = H - top - bottom;
+  const maxCost = niceMax(Math.max(...experiments.map(e => e.metrics.cost_per_question)) * 1.15);
+  // Zoom the y-axis to the data, with the floor on a clean tick (10% or 25% steps).
+  const lowest = Math.min(...experiments.map(e => e.metrics.accuracy)) - 0.05;
+  const step = lowest >= 0.5 ? 0.1 : 0.25;
+  const minAcc = Math.max(0, Math.floor(lowest / step) * step);
+  const xs = c => left + (c / maxCost) * plotW;
+  const ys = a => top + (1 - (a - minAcc) / (1 - minAcc)) * plotH;
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Accuracy versus cost per question" });
+
+  const yTicks = Math.round((1 - minAcc) / step);
+  for (let i = 0; i <= yTicks; i++) {
+    const a = minAcc + (i / yTicks) * (1 - minAcc), y = ys(a);
+    svg.append(svgEl("line", { x1: left, x2: W - right, y1: y, y2: y, stroke: i === 0 ? "var(--axis)" : "var(--grid)" }));
+    svg.append(svgEl("text", { x: left - 8, y: y + 4, "text-anchor": "end" }, pct(a)));
+  }
+  for (let i = 0; i <= 4; i++) {
+    const c = (i / 4) * maxCost;
+    svg.append(svgEl("text", { x: xs(c), y: H - 16, "text-anchor": "middle" }, usd(c)));
+  }
+  svg.append(svgEl("text", { x: left + plotW / 2, y: H - 1, "text-anchor": "middle" }, "Cost per question"));
+
+  experiments.forEach((exp, i) => {
+    const x = xs(exp.metrics.cost_per_question), y = ys(exp.metrics.accuracy);
+    const hit = svgEl("circle", { cx: x, cy: y, r: 12, class: "hit", "aria-label":
+      `${exp.label}: ${pct(exp.metrics.accuracy)} accuracy at ${usd(exp.metrics.cost_per_question)} per question` });
+    const dot = svgEl("circle", { cx: x, cy: y, r: i === selected ? 6 : 5, fill: "var(--series-1)",
+      stroke: "var(--surface)", "stroke-width": 2, class: "dot", "pointer-events": "none" });
+    bindTip(hit, exp.label, [
+      ["var(--series-1)", pct(exp.metrics.accuracy), "accuracy"],
+      [null, usd(exp.metrics.cost_per_question), "per question"],
+      [null, secs(exp.metrics.latency_p50_s), "p50 latency"],
+    ]);
+    hit.addEventListener("click", () => select(i));
+    svg.append(hit, dot);
+    const anchorEnd = x > left + plotW * 0.7;
+    svg.append(svgEl("text", { x: anchorEnd ? x - 10 : x + 10, y: y - 8, "text-anchor": anchorEnd ? "end" : "start",
+      class: i === selected ? "label-strong" : "label-secondary", "font-weight": i === selected ? 600 : 400 }, exp.label));
+  });
+  document.getElementById("scatter").replaceChildren(svg);
+}
+
+// --- tiles ------------------------------------------------------------------
+function drawTiles() {
+  const exp = experiments[selected], base = experiments[0];
+  const set = (id, text) => { document.getElementById(id).textContent = text; };
+  set("t-acc", pct(exp.metrics.accuracy));
+  set("t-rec", pct(exp.metrics.retrieval_recall));
+  set("t-cost", usd(exp.metrics.cost_per_question));
+  set("t-lat", secs(exp.metrics.latency_p50_s));
+  const delta = (key, fmt) => {
+    if (selected === 0) return experiments.length > 1 ? "baseline" : "";
+    const d = exp.metrics[key] - base.metrics[key];
+    return `${d >= 0 ? "+" : "−"}${fmt(Math.abs(d))} vs ${base.label}`;
+  };
+  set("d-acc", delta("accuracy", v => `${Math.round(v * 100)} pts`));
+  set("d-rec", delta("retrieval_recall", v => `${Math.round(v * 100)} pts`));
+  set("d-cost", delta("cost_per_question", usd));
+  set("d-lat", delta("latency_p50_s", secs));
+}
+
+// --- tables -----------------------------------------------------------------
+function drawExperimentsTable() {
+  const table = document.getElementById("experiments");
+  const cols = [
+    ["Experiment", e => e.label], ["Model", e => e.config.model, false, true], ["top_k", e => e.config.top_k, true],
+    ["Effort", e => e.config.effort], ["Accuracy", e => pct(e.metrics.accuracy), true],
+    ["Retrieval", e => pct(e.metrics.retrieval_recall), true], ["Citations", e => pct(e.metrics.citation_validity), true],
+    ["Abstain", e => pct(e.metrics.abstain_accuracy), true], ["$/question", e => usd(e.metrics.cost_per_question), true],
+    ["Total $", e => usd(e.metrics.total_cost), true], ["p50", e => secs(e.metrics.latency_p50_s), true],
+    ["Run", e => e.timestamp.slice(0, 16).replace("T", " "), false, true], ["Notes", e => e.notes || ""],
+  ];
+  const head = el("tr");
+  for (const [name, , num] of cols) head.append(el("th", num ? { class: "num" } : {}, name));
+  const body = el("tbody");
+  experiments.forEach((exp, i) => {
+    const tr = el("tr", i === selected ? { class: "selected" } : {});
+      for (const [, get, num, nowrap] of cols) {
+      tr.append(el("td", num ? { class: "num" } : nowrap ? { class: "nowrap" } : {}, String(get(exp))));
+    }
+    tr.addEventListener("click", () => select(i));
+    body.append(tr);
+  });
+  const thead = el("thead"); thead.append(head);
+  table.replaceChildren(thead, body);
+}
+
+function statusCell(pass) {
+  const td = el("td", { class: "status" });
+  const icon = svgEl("svg", { viewBox: "0 0 14 14", "aria-hidden": "true" });
+  icon.append(svgEl("circle", { cx: 7, cy: 7, r: 7, fill: pass ? "var(--good)" : "var(--critical)" }));
+  icon.append(svgEl("path", { d: pass ? "M4 7.2 6.1 9.3 10 5" : "M4.5 4.5 9.5 9.5 M9.5 4.5 4.5 9.5",
+    stroke: "#fff", "stroke-width": 1.8, fill: "none", "stroke-linecap": "round" }));
+  td.append(icon, document.createTextNode(pass ? "Pass" : "Fail"));
+  return td;
+}
+
+function drawQuestions() {
+  const exp = experiments[selected];
+  document.getElementById("q-title").textContent = `Per-question results: ${exp.label}`;
+  const table = document.getElementById("questions");
+  const head = el("tr");
+  for (const h of ["Result", "Question", "Answer", "Retrieved", "Cited", "Grader note"]) head.append(el("th", {}, h));
+  const body = el("tbody");
+  const rows = [...exp.results].sort((a, b) => a.correct - b.correct);  // failures first
+  for (const r of rows) {
+    const tr = el("tr");
+    tr.append(statusCell(r.correct));
+    tr.append(el("td", {}, r.question));
+    tr.append(el("td", {}, r.answer));
+    const retrieved = el("td");
+    retrieved.append(el("code", {}, r.retrieved_ids.join(", ") || "none"));
+    if (r.answerable && !r.retrieval_hit) retrieved.append(el("div", { class: "muted" }, "missed the gold chunk"));
+    tr.append(retrieved);
+    const cited = el("td"); cited.append(el("code", {}, (r.cited_ids || []).join(", ") || "none"));
+    tr.append(cited);
+    tr.append(el("td", { class: "muted" }, r.answerable ? r.judge_reasoning : `Unanswerable: ${r.judge_reasoning}`));
+    body.append(tr);
+  }
+  const thead = el("thead"); thead.append(head);
+  table.replaceChildren(thead, body);
+}
+
+function select(i) {
+  selected = i;
+  document.getElementById("pick").value = String(i);
+  render();
+}
+function render() {
+  drawTiles(); drawBars(); drawScatter(); drawExperimentsTable(); drawQuestions();
+}
+
+// --- theme toggle (remembered per viewer, best-effort) ---------------------
+document.getElementById("theme").addEventListener("click", () => {
+  const dark = document.documentElement.dataset.theme
+    ? document.documentElement.dataset.theme === "dark"
+    : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.documentElement.dataset.theme = dark ? "light" : "dark";
+  try { localStorage.setItem("theme", document.documentElement.dataset.theme); } catch {}
+});
+try { const t = localStorage.getItem("theme"); if (t) document.documentElement.dataset.theme = t; } catch {}
+
+// --- load -------------------------------------------------------------------
+fetch("data/experiments.json", { cache: "no-store" })
+  .then(r => r.ok ? r.json() : { experiments: [] })
+  .catch(() => {
+    document.getElementById("empty-detail").textContent =
+      "If you opened this file directly, serve it instead: python -m http.server -d docs 8000";
+    return { experiments: [] };
+  })
+  .then(data => {
+    experiments = data.experiments || [];
+    if (!experiments.length) { document.getElementById("empty").hidden = false; return; }
+    const pick = document.getElementById("pick");
+    experiments.forEach((e, i) => pick.append(el("option", { value: i }, e.label)));
+    pick.addEventListener("change", () => select(Number(pick.value)));
+    selected = experiments.length - 1;
+    pick.value = String(selected);
+    document.getElementById("content").hidden = false;
+    render();
+  });
+</script>
+</body>
+</html>

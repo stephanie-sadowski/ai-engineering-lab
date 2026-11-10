@@ -1,0 +1,20 @@
+[
+  {"id": "q01", "question": "Can I return a helmet I've already tried on?", "gold_ids": ["returns#2"], "reference": "Not if the hygiene seal has been broken; helmets can't be returned once the seal is broken.", "answerable": true},
+  {"id": "q02", "question": "How many days do I have to return a bike?", "gold_ids": ["returns#1"], "reference": "30 days from delivery, or 60 days for Lumen Plus members.", "answerable": true},
+  {"id": "q03", "question": "How long until my refund shows up?", "gold_ids": ["returns#3"], "reference": "5-7 business days after the warehouse inspects the return (store credit is instant).", "answerable": true},
+  {"id": "q04", "question": "What's the fee to send back a bike I just don't like?", "gold_ids": ["returns#4"], "reference": "$49 is deducted from the refund for change-of-mind bike returns.", "answerable": true},
+  {"id": "q05", "question": "How much is express shipping?", "gold_ids": ["shipping#1"], "reference": "$39, for delivery in 2-3 business days (free for Lumen Plus members).", "answerable": true},
+  {"id": "q06", "question": "Do I have to pay customs on an order to Germany?", "gold_ids": ["shipping#3"], "reference": "Yes, customs duties are paid by the customer and are not refundable.", "answerable": true},
+  {"id": "q07", "question": "My package arrived damaged. What should I do?", "gold_ids": ["shipping#4"], "reference": "Report it within 48 hours of delivery, with photos.", "answerable": true},
+  {"id": "q08", "question": "Is the frame warranty valid if I bought the bike secondhand?", "gold_ids": ["warranty#1"], "reference": "No, the lifetime frame warranty is for the original owner and does not transfer on resale.", "answerable": true},
+  {"id": "q09", "question": "How long is my e-bike battery covered?", "gold_ids": ["warranty#2"], "reference": "3 years or 800 charge cycles, whichever comes first.", "answerable": true},
+  {"id": "q10", "question": "Are worn brake pads covered by the warranty?", "gold_ids": ["warranty#3"], "reference": "No, normal wear items like brake pads are not covered.", "answerable": true},
+  {"id": "q11", "question": "How much does Lumen Plus cost?", "gold_ids": ["membership#1"], "reference": "$79 per year, renewing automatically.", "answerable": true},
+  {"id": "q12", "question": "If I cancel my membership halfway through the year, do I get money back?", "gold_ids": ["membership#1"], "reference": "No, cancellations take effect at the end of the billing year and are not prorated.", "answerable": true},
+  {"id": "q13", "question": "I crashed my bike. Is there any discount on a new frame?", "gold_ids": ["membership#3"], "reference": "Lumen Plus members can buy a replacement frame at 50% off, once per membership year.", "answerable": true},
+  {"id": "q14", "question": "How much is a tune-up?", "gold_ids": ["repairs#2"], "reference": "$89; Lumen Plus members get one free tune-up per year.", "answerable": true},
+  {"id": "q15", "question": "Can my local non-certified bike shop service my e-bike battery?", "gold_ids": ["repairs#4"], "reference": "No, batteries must be serviced at a certified e-bike partner shop; servicing elsewhere voids the battery warranty.", "answerable": true},
+  {"id": "q16", "question": "Do you offer financing or payment plans?", "gold_ids": [], "reference": "Not covered by the handbook; the assistant should say it doesn't know.", "answerable": false},
+  {"id": "q17", "question": "What colors does the Commuter bike come in?", "gold_ids": [], "reference": "Not covered by the handbook; the assistant should say it doesn't know.", "answerable": false},
+  {"id": "q18", "question": "Can I rent a bike from you?", "gold_ids": [], "reference": "Not covered by the handbook; the assistant should say it doesn't know.", "answerable": false}
+]
