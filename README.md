@@ -1,13 +1,13 @@
 # AI Engineering Lab
 
-[![CI](https://github.com/YOUR_GITHUB_USERNAME/ai-engineering-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/ai-engineering-lab/actions/workflows/ci.yml)
-[![Eval dashboard](https://img.shields.io/badge/eval%20dashboard-live-2a78d6)](https://YOUR_GITHUB_USERNAME.github.io/ai-engineering-lab/)
+[![CI](https://github.com/stephanie-sadowski/ai-engineering-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/stephanie-sadowski/ai-engineering-lab/actions/workflows/ci.yml)
+[![Eval dashboard](https://img.shields.io/badge/eval%20dashboard-live-2a78d6)](https://stephanie-sadowski.github.io/ai-engineering-lab/)
 
 A hands-on path from a first LLM API call to an **evaluated, tool-using support agent**, built in plain Python on the [Claude API](https://platform.claude.com/docs). Every lesson is a short, runnable script. The project ends with a working agent and an experiment-tracking dashboard.
 
 The running example is **Lumen Bikes**, a fictional bike retailer. Its support bot has to answer policy questions from a handbook, look up orders, and issue refunds, without making up policy.
 
-**→ [Live eval dashboard](https://YOUR_GITHUB_USERNAME.github.io/ai-engineering-lab/)**: accuracy, retrieval recall, cost and latency for every experiment run against the bot.
+**→ [Live eval dashboard](https://stephanie-sadowski.github.io/ai-engineering-lab/)**: accuracy, retrieval recall, cost and latency for every experiment run against the bot.
 
 ## What's inside
 
@@ -36,7 +36,7 @@ flowchart LR
 ## Quick start
 
 ```bash
-git clone https://github.com/YOUR_GITHUB_USERNAME/ai-engineering-lab.git
+git clone https://github.com/stephanie-sadowski/ai-engineering-lab.git
 cd ai-engineering-lab
 python3 -m venv .venv && source .venv/bin/activate   # Python 3.10+
 pip install -r requirements.txt
@@ -55,7 +55,7 @@ python lessons/06_evals/main.py --label "top_k=1" --top-k 1
 python -m http.server -d docs 8000      # open http://localhost:8000
 ```
 
-Each run is appended to [`docs/data/experiments.json`](docs/data/experiments.json). Commit it and push, and the [dashboard](https://YOUR_GITHUB_USERNAME.github.io/ai-engineering-lab/) updates.
+Each run is appended to [`docs/data/experiments.json`](docs/data/experiments.json). Commit it and push, and the [dashboard](https://stephanie-sadowski.github.io/ai-engineering-lab/) updates.
 
 ## Project layout
 
